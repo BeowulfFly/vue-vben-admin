@@ -48,7 +48,7 @@ function setupAccessGuard(router: Router) {
   router.beforeEach(async (to, from) => {
     const accessStore = useAccessStore();
     const userStore = useUserStore();
-    const authStore = useAuthStore();
+    const _authStore = useAuthStore();
 
     // 基本路由，这些路由不需要进入权限拦截
     if (coreRouteNames.includes(to.name as string)) {
@@ -62,27 +62,11 @@ function setupAccessGuard(router: Router) {
       return true;
     }
 
+    // TODO: 恢复登录鉴权 — 当前跳过 accessToken 检查，方便 UI 开发
     // accessToken 检查
     if (!accessStore.accessToken) {
-      // 明确声明忽略权限访问权限，则可以访问
-      if (to.meta.ignoreAccess) {
-        return true;
-      }
-
-      // 没有访问权限，跳转登录页面
-      if (to.fullPath !== LOGIN_PATH) {
-        return {
-          path: LOGIN_PATH,
-          // 如不需要，直接删除 query
-          query:
-            to.fullPath === preferences.app.defaultHomePath
-              ? {}
-              : { redirect: encodeURIComponent(to.fullPath) },
-          // 携带当前跳转的页面，登录后重新跳转该页面
-          replace: true,
-        };
-      }
-      return to;
+      // 写入一个临时 token，让后续路由生成逻辑可以继续
+      accessStore.setAccessToken('dev-bypass-token');
     }
 
     // 是否已经生成过动态路由
@@ -91,8 +75,16 @@ function setupAccessGuard(router: Router) {
     }
 
     // 生成路由表
-    // 当前登录用户拥有的角色标识列表
-    const userInfo = userStore.userInfo || (await authStore.fetchUserInfo());
+    // TODO: 恢复后替换为 authStore.fetchUserInfo()
+    const userInfo = userStore.userInfo ?? {
+      id: 'dev',
+      realName: '开发者',
+      roles: [{ value: 'super' }],
+      username: 'dev',
+    };
+    if (!userStore.userInfo) {
+      userStore.setUserInfo(userInfo as any);
+    }
     const userRoles = userInfo.roles ?? [];
 
     // 生成菜单和路由

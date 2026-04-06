@@ -72,11 +72,13 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
   });
 
   // 处理返回的响应数据格式
+  // 后端响应结构：{ base: { code: 0, success: true, message: '' }, data: ... }
+  // 顶层没有 code 字段，使用函数形式适配
   client.addResponseInterceptor(
     defaultResponseInterceptor({
       codeField: 'code',
-      dataField: 'data',
-      successCode: 0,
+      dataField: (res) => res,
+      successCode: (code) => code === 0 || code === undefined,
     }),
   );
 
